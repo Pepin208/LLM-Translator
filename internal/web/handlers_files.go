@@ -85,14 +85,43 @@ func (s *Server) handleUpload(w http.ResponseWriter, req *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"uploaded_files": result})
 }
 
+// protectedDownloads are config/secret artifacts that must never be served by
+// the download endpoint, no matter which directory they live in.
+var protectedDownloads = map[string]struct{}{
+	"translator_config.json": {},
+	"cert.pem":               {},
+	"key.pem":                {},
+	"translator_log.txt":     {},
+}
+
+// isProtectedDownload reports whether a requested filename is a protected
+// artifact. The comparison is case-insensitive and also blocks the atomic-write
+// temp files (e.g. "translator_config.json.tmp-123456").
+func isProtectedDownload(name string) bool {
+	lower := strings.ToLower(name)
+	if _, blocked := protectedDownloads[lower]; blocked {
+		return true
+	}
+	matched, _ := filepath.Match("*.tmp-*", lower)
+	return matched
+}
+
 func (s *Server) handleDownload(w http.ResponseWriter, req *http.Request) {
 	safe := filepath.Base(chi.URLParam(req, "filename"))
 	if safe == "" || safe == "." || safe == ".." {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"detail": "Invalid filename."})
 		return
 	}
+	// Defense in depth: reject protected artifacts before touching the disk.
+	if isProtectedDownload(safe) {
+		s.logger.Warn("download blocked: protected filename", "filename", safe, "ip", clientIP(req))
+		writeJSON(w, http.StatusNotFound, map[string]any{"detail": "File not found."})
+		return
+	}
 
-	dirs := []string{s.outputDir, s.uploadDir, s.baseDir}
+	// Only the user-facing directories are searchable. Never search baseDir: it
+	// holds translator_config.json, the TLS keys and the server log.
+	dirs := []string{s.outputDir, s.uploadDir}
 	for _, d := range dirs {
 		target := filepath.Join(d, safe)
 		if isWithin(d, target) {
