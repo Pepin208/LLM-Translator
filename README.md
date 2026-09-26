@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Pepin208/LLM-Translator/blob/main/LICENSE)
 
 A local LLM-powered subtitle translator: a LAN web app and an interactive CLI
-that translate SRT/ASS/VTT subtitles while preserving every inline tag and
+that translate SRT/ASS/SSA/VTT subtitles while preserving every inline tag and
 style.
 
 - Web UI + REST/SSE API (`cmd/server`) and an interactive CLI (`cmd/cli`).
@@ -110,7 +110,7 @@ cmd/server          Web/LAN server (port 21346)
 cmd/cli             Interactive CLI (cobra + huh)
 internal/config     Constants, endpoints, pricing, session, config I/O
 internal/utils      NFKD normalization, range parsing
-internal/subtitle   Minimal SRT/ASS/VTT reader+writer (tag preserving)
+internal/subtitle   Minimal SRT/ASS/SSA/VTT reader+writer (tag preserving)
 internal/parser     Tag masking/restoration (LIFO) and proper-name extraction
 internal/providers  One file per provider protocol
 internal/engine     Token estimation, quality checks, batch pipeline, retries

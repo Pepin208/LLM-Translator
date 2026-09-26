@@ -179,7 +179,7 @@ func resolveFiles(input string) ([]string, error) {
 
 	if !info.IsDir() {
 		ext := strings.ToLower(filepath.Ext(input))
-		if ext != ".srt" && ext != ".ass" && ext != ".vtt" {
+		if ext != ".srt" && ext != ".ass" && ext != ".ssa" && ext != ".vtt" {
 			return nil, fmt.Errorf("unsupported file extension %q", ext)
 		}
 		return []string{input}, nil
@@ -194,7 +194,7 @@ func resolveFiles(input string) ([]string, error) {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(path)) {
-		case ".srt", ".ass", ".vtt":
+		case ".srt", ".ass", ".ssa", ".vtt":
 			found = append(found, path)
 		}
 		return nil

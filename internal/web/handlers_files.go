@@ -21,7 +21,7 @@ const (
 	maxUploadBytes = 25 * 1024 * 1024
 )
 
-var allowedExts = map[string]struct{}{".srt": {}, ".ass": {}, ".vtt": {}}
+var allowedExts = map[string]struct{}{".srt": {}, ".ass": {}, ".ssa": {}, ".vtt": {}}
 
 func (s *Server) handleUpload(w http.ResponseWriter, req *http.Request) {
 	if err := req.ParseMultipartForm(maxUploadBytes); err != nil {
@@ -46,7 +46,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, req *http.Request) {
 	for _, fh := range files {
 		ext := strings.ToLower(filepath.Ext(fh.Filename))
 		if _, ok := allowedExts[ext]; !ok {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"detail": fmt.Sprintf("Unsupported file format '%s'. Only .srt, .ass, and .vtt files are allowed.", ext)})
+			writeJSON(w, http.StatusBadRequest, map[string]any{"detail": fmt.Sprintf("Unsupported file format '%s'. Only .srt, .ass, .ssa, and .vtt files are allowed.", ext)})
 			return
 		}
 		safe := filepath.Base(fh.Filename)
