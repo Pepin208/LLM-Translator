@@ -116,7 +116,7 @@ func run(cmd *cobra.Command, _ []string) error {
 	session.ModelID = model
 	session.PromptCost = 0
 	session.CompletionCost = 0
-	session.ContextLength = 128000
+	session.ContextLength = config.DefaultContextLength
 	session.SourceLang = source
 	session.TargetLang = target
 	session.DomainContext = domain

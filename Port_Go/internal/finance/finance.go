@@ -24,12 +24,12 @@ func CheckOpenRouterBalance(apiKey, targetCurrency string, out io.Writer) (*deci
 
 	headers := map[string]string{
 		"Authorization": "Bearer " + apiKey,
-		"HTTP-Referer":  "https://pepin208.dedyn.io",
-		"X-Title":       "LLMT",
+		"HTTP-Referer":  config.RefererURL,
+		"X-Title":       config.AppTitle,
 	}
 
 	var remaining *decimal.Decimal
-	if data, err := httpGetJSON("https://openrouter.ai/api/v1/credits", headers, 10*time.Second); err == nil {
+	if data, err := httpGetJSON(config.OpenRouterCreditsURL, headers, 10*time.Second); err == nil {
 		inner, _ := data["data"].(map[string]any)
 		total := decimal.NewFromFloat(asFloat(inner["total_credits"]))
 		usage := decimal.NewFromFloat(asFloat(inner["total_usage"]))
@@ -44,7 +44,7 @@ func CheckOpenRouterBalance(apiKey, targetCurrency string, out io.Writer) (*deci
 
 	if targetCurrency != "" && targetCurrency != "USD" {
 		fmt.Fprintf(out, "Fetching %s exchange rate...\n", targetCurrency)
-		if data, err := httpGetJSON("https://open.er-api.com/v6/latest/USD", nil, 10*time.Second); err == nil {
+		if data, err := httpGetJSON(config.CurrencyRatesURL, nil, 10*time.Second); err == nil {
 			rates, _ := data["rates"].(map[string]any)
 			if v, ok := rates[targetCurrency]; ok {
 				r := decimal.NewFromFloat(asFloat(v))

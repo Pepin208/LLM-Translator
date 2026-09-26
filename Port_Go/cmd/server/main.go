@@ -15,17 +15,24 @@ import (
 	"translate_llm/internal/web"
 )
 
-const port = 21346
+const port = config.DefaultPort
 
 func main() {
 	baseDir := config.BASE_DIR
 
-	if token, generated := web.EnsureAuthConfig(); generated {
-		fmt.Println("=" + repeat("=", 67))
+	token, generated := web.EnsureAuthConfig()
+	fmt.Println("=" + repeat("=", 67))
+	if generated {
 		fmt.Println("  🔐 NEW ACCESS TOKEN (save it now, it will not be shown again):")
-		fmt.Printf("      %s\n", token)
-		fmt.Println("=" + repeat("=", 67))
+	} else {
+		fmt.Println("  🔐 ACCESS TOKEN (enter it to log in from any device):")
 	}
+	if token == "" {
+		fmt.Println("      (could not read or create the config file)")
+	} else {
+		fmt.Printf("      %s\n", token)
+	}
+	fmt.Println("=" + repeat("=", 67))
 
 	srv := web.NewServer(baseDir)
 	handler := srv.Router()

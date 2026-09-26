@@ -23,25 +23,39 @@ internal/web      HTTP server, token auth (HMAC cookie), SSE, upload/download
 
 ## Build and run
 
+From the workspace root (`../`), `start.sh` rebuilds only when Go sources
+changed and writes the binaries to the root `bin/`:
+
+```bash
+./start.sh            # build if needed, run the web server
+./start.sh --cli      # build if needed, run the interactive CLI
+./start.sh --watch    # rebuild + restart the server on Go changes
+```
+
+Manual build (note the `../bin` output path; the binaries live at the repo
+root, not inside `Port_Go/`):
+
 ```bash
 cd Port_Go
-go build -o bin/llmt-server ./cmd/server
-go build -o bin/llmt-cli    ./cmd/cli
-
-./bin/llmt-server     # web server
-./bin/llmt-cli        # interactive CLI
+go build -o ../bin/llmt-server ./cmd/server
+go build -o ../bin/llmt-cli    ./cmd/cli
 ```
+
+The server must run with its working directory inside `Port_Go/` so
+`config.BASE_DIR` can find `go.mod` and resolve `static/`, `web_storage/` and
+`translator_config.json`. `start.sh` handles this for you.
 
 The web server listens on `https://0.0.0.0:21346` (HTTP if no cert/key).
-On first run it prints a one-time access token:
+It prints the access token on every startup:
 
 ```
-🔐 NEW ACCESS TOKEN (save it now, it will not be shown again):
+🔐 ACCESS TOKEN (enter it to log in from any device):
       <token>
 ```
 
-Paste it into the login overlay. Sessions last 7 days. Log out from the top
-bar.
+Paste it into the login overlay. If a device tries to log in with a wrong
+token, the current token is printed again in the terminal. Sessions last 7
+days. Log out from the top bar.
 
 ## Configuration
 

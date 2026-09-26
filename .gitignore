@@ -13,9 +13,12 @@
 # Runtime data (uploads, outputs, generated glossaries)
 /Port_Go/web_storage/
 
-# Build fingerprint written by start.sh
-/Port_Go/.build-hash
-/build-hash
+# Server log
+/Port_Go/translator_log.txt
+
+# Build fingerprints written by start.sh
+/.build-hash
+/.build-hash-static
 
 # Frozen Python original: kept for reference only, not part of the active project
 /legacy/
