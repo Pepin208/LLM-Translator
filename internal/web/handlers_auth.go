@@ -24,15 +24,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, req *http.Request) {
 	now := time.Now()
 
 	s.loginMu.Lock()
-	attempts := s.loginAttempts[ip]
-	fresh := attempts[:0]
-	for _, t := range attempts {
-		if now.Sub(t) < loginWindow {
-			fresh = append(fresh, t)
-		}
-	}
-	if len(fresh) >= loginMaxAttempts {
-		s.loginAttempts[ip] = fresh
+	// Opportunistically drop IPs whose attempts have all expired, so the map
+	// does not grow without bound on a public-facing instance.
+	s.pruneLoginAttemptsLocked(now)
+	if len(s.loginAttempts[ip]) >= loginMaxAttempts {
 		s.loginMu.Unlock()
 		s.logger.Warn("login rate-limited", "ip", ip, "ua", ua)
 		writeJSON(w, http.StatusTooManyRequests, map[string]any{"detail": "Too many login attempts. Try again later."})
@@ -46,8 +41,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, req *http.Request) {
 	submitted := strings.TrimSpace(body.Token)
 
 	if !VerifyAccessToken(submitted) {
-		fresh = append(fresh, now)
-		s.loginAttempts[ip] = fresh
+		s.loginAttempts[ip] = append(s.loginAttempts[ip], now)
 		s.loginMu.Unlock()
 		// Audit log for the failed attempt. Deliberately no secret material:
 		// this logger writes to stdout and translator_log.txt.
@@ -81,4 +75,22 @@ func (s *Server) handleLogout(w http.ResponseWriter, req *http.Request) {
 	s.logger.Info("logout", "ip", clientIP(req), "ua", req.UserAgent())
 	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true})
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+}
+
+// pruneLoginAttemptsLocked drops every IP whose stored attempts are all outside
+// the rate-limit window. Callers must hold s.loginMu.
+func (s *Server) pruneLoginAttemptsLocked(now time.Time) {
+	for ip, attempts := range s.loginAttempts {
+		fresh := attempts[:0]
+		for _, t := range attempts {
+			if now.Sub(t) < loginWindow {
+				fresh = append(fresh, t)
+			}
+		}
+		if len(fresh) == 0 {
+			delete(s.loginAttempts, ip)
+			continue
+		}
+		s.loginAttempts[ip] = fresh
+	}
 }

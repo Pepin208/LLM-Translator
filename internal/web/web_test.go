@@ -287,3 +287,19 @@ func TestFailedLoginDoesNotBroadcastToken(t *testing.T) {
 		}
 	}
 }
+
+func TestLoginAttemptsPruned(t *testing.T) {
+	srv := NewServer(t.TempDir())
+	now := time.Now()
+	srv.loginAttempts["stale"] = []time.Time{now.Add(-2 * loginWindow)}
+	srv.loginAttempts["recent"] = []time.Time{now.Add(-time.Second)}
+
+	srv.pruneLoginAttemptsLocked(now)
+
+	if _, ok := srv.loginAttempts["stale"]; ok {
+		t.Errorf("stale IP entry was not pruned")
+	}
+	if _, ok := srv.loginAttempts["recent"]; !ok {
+		t.Errorf("recent IP entry was pruned")
+	}
+}
