@@ -2,19 +2,21 @@
 /bin/
 *.exe
 *.out
+*.test
+coverage.out
 
 # Local TLS material (never commit private keys)
-/Port_Go/key.pem
-/Port_Go/cert.pem
+/key.pem
+/cert.pem
 
 # Live config with API keys and auth material
-/Port_Go/translator_config.json
+/translator_config.json
 
 # Runtime data (uploads, outputs, generated glossaries)
-/Port_Go/web_storage/
+/web_storage/
 
 # Server log
-/Port_Go/translator_log.txt
+/translator_log.txt
 
 # Build fingerprints written by start.sh
 /.build-hash
