@@ -1,30 +1,24 @@
-# Go build artifacts
+# Go build artifacts (binaries are built at the repo root by start.sh)
 /bin/
 *.exe
 *.out
 
 # Local TLS material (never commit private keys)
-/key.pem
-/cert.pem
+/Port_Go/key.pem
+/Port_Go/cert.pem
 
 # Live config with API keys and auth material
-/translator_config.json
+/Port_Go/translator_config.json
 
 # Runtime data (uploads, outputs, generated glossaries)
-/web_storage/
+/Port_Go/web_storage/
 
-# Python artifacts (the legacy Python tree lives outside this repo; kept here
-# so the patterns still apply if the repo is ever widened to the parent dir)
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-*.egg-info/
+# Build fingerprint written by start.sh
+/Port_Go/.build-hash
+/build-hash
+
+# Frozen Python original: kept for reference only, not part of the active project
+/legacy/
 
 # Editors / OS
 .DS_Store
