@@ -1,9 +1,11 @@
 # LLM Translator
 
+[![CI](https://github.com/Pepin208/LLM-Translator/actions/workflows/ci.yml/badge.svg)](https://github.com/Pepin208/LLM-Translator/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Pepin208/LLM-Translator/blob/main/LICENSE)
+
 A local LLM-powered subtitle translator: a LAN web app and an interactive CLI
-that translate SRT/ASS/SSA/VTT subtitles while preserving every inline tag and
-style. Ported from an earlier Python implementation (kept under `legacy/` for
-reference only).
+that translate SRT/ASS/VTT subtitles while preserving every inline tag and
+style.
 
 - Web UI + REST/SSE API (`cmd/server`) and an interactive CLI (`cmd/cli`).
 - Providers: OpenRouter, OpenAI, DeepSeek, Anthropic, Google Gemini, Local
@@ -89,6 +91,19 @@ certificate (`cert.pem`/`key.pem`) with SANs for `localhost`, the hostname and
 every local IP. Install `cert.pem` as a trusted CA on your devices to avoid
 browser warnings; use `--http` to disable TLS entirely.
 
+## Security
+
+This is a single-user LAN tool, not a hardened multi-tenant service.
+
+- Access is gated by an access token exchanged for a signed session cookie
+  (`HttpOnly`, `SameSite=Strict`). The server prints the token on startup and
+  again on its terminal when a device fails to authenticate.
+- TLS is self-signed by default (see above). Use `--http` only on a trusted
+  network.
+- An authenticated session can upload and download subtitle files and read or
+  update non-secret configuration. It cannot retrieve `translator_config.json`,
+  `cert.pem`, `key.pem` or the server log through the API.
+
 ## Providers
 
 OpenRouter, OpenAI, DeepSeek, Anthropic, Google Gemini, Local, and the OpenCode
@@ -109,7 +124,7 @@ cmd/server          Web/LAN server (port 21346)
 cmd/cli             Interactive CLI (cobra + huh)
 internal/config     Constants, endpoints, pricing, session, config I/O
 internal/utils      NFKD normalization, range parsing
-internal/subtitle   Minimal SRT/ASS/SSA/VTT reader+writer (tag preserving)
+internal/subtitle   Minimal SRT/ASS/VTT reader+writer (tag preserving)
 internal/parser     Tag masking/restoration (LIFO) and proper-name extraction
 internal/providers  One file per provider protocol
 internal/engine     Token estimation, quality checks, batch pipeline, retries
