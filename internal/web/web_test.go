@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -312,5 +313,47 @@ func TestLoginAttemptsPruned(t *testing.T) {
 	}
 	if _, ok := srv.loginAttempts["recent"]; !ok {
 		t.Errorf("recent IP entry was pruned")
+	}
+}
+
+func TestUploadAcceptsSSAAndRejectsUnknown(t *testing.T) {
+	withTempConfig(t)
+	token, _ := EnsureAuthConfig()
+
+	srv := NewServer(t.TempDir())
+	srv.SetTLS(false)
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+	client := loginAs(t, ts, token)
+
+	upload := func(filename string) int {
+		t.Helper()
+		var body bytes.Buffer
+		mw := multipart.NewWriter(&body)
+		fw, err := mw.CreateFormFile("files", filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = fw.Write([]byte("[Events]\nDialogue: Marked=0,0:00:01.00,0:00:02.00,Default,,0000,0000,0000,,Hi\n"))
+		_ = mw.Close()
+
+		req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/upload", &body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		return resp.StatusCode
+	}
+
+	if got := upload("episode01.ssa"); got != http.StatusOK {
+		t.Errorf(".ssa upload status = %d, want 200", got)
+	}
+	if got := upload("notes.txt"); got != http.StatusBadRequest {
+		t.Errorf(".txt upload status = %d, want 400", got)
 	}
 }

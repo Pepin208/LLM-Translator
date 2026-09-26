@@ -122,3 +122,50 @@ func TestParseVTT(t *testing.T) {
 		t.Errorf("start = %d", f.Lines[0].StartMS)
 	}
 }
+
+func TestParseAndSaveSSA(t *testing.T) {
+	in := "[Script Info]\n" +
+		"Title: Test\n" +
+		"ScriptType: v4.00\n\n" +
+		"[V4 Styles]\n" +
+		"Format: Name, Fontname, Fontsize, PrimaryColour\n" +
+		"Style: Default,Arial,20,16777215\n\n" +
+		"[Events]\n" +
+		"Format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n" +
+		"Dialogue: Marked=0,0:00:01.00,0:00:03.00,Default,Alice,0000,0000,0000,,{\\i1}Hello{\\i0} world\n" +
+		"Dialogue: Marked=0,0:00:04.00,0:00:06.00,Default,,0000,0000,0000,,Second line\n"
+	path := writeTemp(t, "a.ssa", in)
+
+	f, err := Parse(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Format != "ass" {
+		t.Errorf("format = %q, want ass (SSA shares the ASS parser)", f.Format)
+	}
+	if len(f.Lines) != 2 {
+		t.Fatalf("lines = %d, want 2", len(f.Lines))
+	}
+	if f.Lines[0].Style != "Default" || f.Lines[0].Name != "Alice" {
+		t.Errorf("style/name = %q/%q", f.Lines[0].Style, f.Lines[0].Name)
+	}
+	if f.Lines[0].StartMS != 1000 || f.Lines[1].StartMS != 4000 {
+		t.Errorf("timings: %d %d", f.Lines[0].StartMS, f.Lines[1].StartMS)
+	}
+	if f.Lines[0].Text != `{\i1}Hello{\i0} world` {
+		t.Errorf("text = %q", f.Lines[0].Text)
+	}
+
+	out := filepath.Join(t.TempDir(), "out.ssa")
+	if err := f.Save(out, map[int]string{0: `{\i1}Hola{\i0} mundo`}); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(out)
+	s := string(data)
+	if !strings.Contains(s, `Dialogue: Marked=0,0:00:01.00,0:00:03.00,Default,Alice,0000,0000,0000,,{\i1}Hola{\i0} mundo`) {
+		t.Errorf("SSA dialogue line not reconstructed:\n%s", s)
+	}
+	if !strings.Contains(s, "ScriptType: v4.00") {
+		t.Errorf("script header lost:\n%s", s)
+	}
+}
