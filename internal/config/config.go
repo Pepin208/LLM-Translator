@@ -128,6 +128,8 @@ var KnownCosts = map[string][2]float64{
 	"deepseek-reasoner":          {0.00000055, 0.00000219},
 	"gemini-2.0-flash":           {0.00000010, 0.00000040},
 	"gemini-1.5-pro":             {0.00000125, 0.00000500},
+	"mistral-large-latest":       {0.0000020, 0.0000060},
+	"mistral-small-latest":       {0.0000002, 0.0000006},
 }
 
 // ProviderModels lists offline fallbacks per provider.
@@ -136,6 +138,7 @@ var ProviderModels = map[string][]string{
 	"Anthropic":     {"claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"},
 	"DeepSeek":      {"deepseek-chat", "deepseek-reasoner"},
 	"Google Gemini": {"gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"},
+	"Mistral":       {"mistral-large-latest", "mistral-small-latest"},
 	"Local":         {"default"},
 }
 
@@ -199,7 +202,7 @@ const (
 // ValidProviders is the canonical provider name set.
 var ValidProviders = []string{
 	"OpenRouter", "OpenAI", "Anthropic", "DeepSeek", "Google Gemini",
-	"Local", "OpenCode Zen", "OpenCode Go",
+	"Mistral", "Local", "OpenCode Zen", "OpenCode Go",
 }
 
 // --- Session ---------------------------------------------------------------

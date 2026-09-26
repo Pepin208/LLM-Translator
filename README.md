@@ -8,8 +8,8 @@ that translate SRT/ASS/VTT subtitles while preserving every inline tag and
 style.
 
 - Web UI + REST/SSE API (`cmd/server`) and an interactive CLI (`cmd/cli`).
-- Providers: OpenRouter, OpenAI, DeepSeek, Anthropic, Google Gemini, Local
-  (OpenAI-compatible), OpenCode Zen and OpenCode Go.
+- Providers: OpenRouter, OpenAI, Anthropic, DeepSeek, Google Gemini,
+  Mistral, Local (OpenAI-compatible), OpenCode Zen and OpenCode Go.
 - Tag-preserving subtitle reader/writer (no `go-astisub` normalization).
 - Per-series glossaries, retry/quality pipeline, prompt caching, cost
   projections and balance tracking.
@@ -64,7 +64,7 @@ masked in `GET /api/config` and never overwritten by a masked submission.
 | `TRANSLATOR_STATIC` | Serve the frontend from this directory instead of the embedded copy |
 | `PORT` | Listen port (default `21346`) |
 | `OPENROUTER_REFERER` | Referer sent to OpenRouter |
-| `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_GEMINI_API_KEY`, `OPENCODE_API_KEY` | Provider API keys (override the config file; both OpenCode gateways use `OPENCODE_API_KEY`) |
+| `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_GEMINI_API_KEY`, `MISTRAL_API_KEY`, `OPENCODE_API_KEY` | Provider API keys (override the config file; both OpenCode gateways use `OPENCODE_API_KEY`) |
 
 See `.env.example`.
 
@@ -99,9 +99,9 @@ This is a single-user LAN tool, not a hardened multi-tenant service.
 ## Providers
 
 Pick any provider in the web UI or the CLI: OpenRouter, OpenAI, Anthropic,
-DeepSeek, Google Gemini, a local OpenAI-compatible server, and the OpenCode
-gateways. Each provider reads its API key from an environment variable (see
-above) or from `translator_config.json`.
+DeepSeek, Google Gemini, Mistral, a local OpenAI-compatible server, and the
+OpenCode gateways. Each provider reads its API key from an environment variable
+(see above) or from `translator_config.json`.
 
 ## Layout
 

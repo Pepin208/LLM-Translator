@@ -208,6 +208,8 @@ func CreateProvider(name, localURL string) (Provider, error) {
 		return NewAnthropicProvider(), nil
 	case "Google Gemini":
 		return NewGeminiProvider(), nil
+	case "Mistral":
+		return NewMistralProvider(), nil
 	case "Local":
 		if strings.TrimSpace(localURL) == "" {
 			return nil, fmt.Errorf("a server URL is required for the Local provider")
