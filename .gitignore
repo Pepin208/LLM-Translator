@@ -7,6 +7,9 @@
 /key.pem
 /cert.pem
 
+# Live config with API keys and auth material
+/translator_config.json
+
 # Runtime data (uploads, outputs, generated glossaries)
 /web_storage/
 

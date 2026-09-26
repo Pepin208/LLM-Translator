@@ -1,8 +1,9 @@
 # LLM Subtitle Translator — Go port
 
-A Go reimplementation of the Python backend (web server + CLI). It shares the
-same `translator_config.json`, `static/` frontend and file formats, so it is
-drop-in compatible with the Python version.
+The active implementation of the translator (web server + CLI). It is a Go
+rewrite that carries over the frontend, `translator_config.json` and file
+formats from the original Python version, which is now frozen under `../legacy/`
+and no longer maintained.
 
 ## Layout
 
@@ -40,16 +41,18 @@ On first run it prints a one-time access token:
 ```
 
 Paste it into the login overlay. Sessions last 7 days. Log out from the top
-bar. The token hash is shared with the Python version (same config file), so
-the same token works for both.
+bar.
 
 ## Configuration
 
 `translator_config.json` is resolved in this order:
 
 1. `$TRANSLATOR_CONFIG`
-2. the project root one level above `Port_Go/` (shared with Python)
-3. `Port_Go/translator_config.json`
+2. `Port_Go/translator_config.json` (the live config)
+3. the parent directory one level above `Port_Go/`
+
+The live config lives inside `Port_Go/` and is gitignored, since it holds API
+keys and auth material.
 
 Unknown keys are preserved on save. API keys are masked in `GET /api/config`
 and never overwritten by a masked submission.
