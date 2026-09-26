@@ -3,11 +3,16 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/Pepin208/LLM-Translator/internal/config"
 )
@@ -156,4 +161,156 @@ func TestAuthEnforcedAndConfigMasked(t *testing.T) {
 		t.Errorf("after logout status = %d, want 401", resp.StatusCode)
 	}
 	resp.Body.Close()
+}
+
+func loginAs(t *testing.T, ts *httptest.Server, token string) *http.Client {
+	t.Helper()
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar}
+	body, _ := json.Marshal(map[string]string{"token": token})
+	resp, err := client.Post(ts.URL+"/api/login", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("login status = %d, want 200", resp.StatusCode)
+	}
+	resp.Body.Close()
+	return client
+}
+
+func TestDownloadRejectsProtectedAndBaseDirFiles(t *testing.T) {
+	withTempConfig(t)
+	token, _ := EnsureAuthConfig()
+
+	base := t.TempDir()
+	// Sensitive artifacts that must never be reachable through the API.
+	// "other_secret.txt" is intentionally NOT on the denylist: it proves the
+	// handler no longer searches baseDir at all, not just that names are blocked.
+	for name, content := range map[string]string{
+		"translator_config.json": `{"openrouter_api_key":"sk-secret-123456"}`,
+		"cert.pem":               "-----BEGIN CERTIFICATE-----",
+		"key.pem":                "-----BEGIN PRIVATE KEY-----",
+		"translator_log.txt":     "log line",
+		"other_secret.txt":       "not on the denylist",
+	} {
+		if err := os.WriteFile(filepath.Join(base, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	srv := NewServer(base)
+	// httptest serves plain HTTP; ensure the session cookie is usable so the
+	// requests actually reach handleDownload instead of being rejected by auth.
+	srv.SetTLS(false)
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+	client := loginAs(t, ts, token)
+
+	for _, name := range []string{
+		"translator_config.json",
+		"TRANSLATOR_CONFIG.JSON",
+		"cert.pem",
+		"key.pem",
+		"translator_log.txt",
+		"translator_config.json.tmp-123456",
+		"other_secret.txt",
+	} {
+		resp, err := client.Get(ts.URL + "/api/download/" + url.PathEscape(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("file %q: status = %d, want 404", name, resp.StatusCode)
+		}
+		if strings.Contains(string(body), "sk-secret-123456") || strings.Contains(string(body), "PRIVATE KEY") {
+			t.Errorf("file %q leaked sensitive content", name)
+		}
+	}
+}
+
+func TestDownloadStillServesOutputs(t *testing.T) {
+	withTempConfig(t)
+	token, _ := EnsureAuthConfig()
+
+	srv := NewServer(t.TempDir())
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	// A translated file following the UUID-prefix convention.
+	if err := os.WriteFile(filepath.Join(srv.outputDir, "abcd1234_episode01_es.srt"), []byte("1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	client := loginAs(t, ts, token)
+
+	// Exact filename.
+	resp, err := client.Get(ts.URL + "/api/download/abcd1234_episode01_es.srt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("exact download status = %d, want 200", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Suffix-match fallback (user-facing name without the UUID prefix).
+	resp, err = client.Get(ts.URL + "/api/download/episode01_es.srt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("suffix download status = %d, want 200", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
+func TestFailedLoginDoesNotBroadcastToken(t *testing.T) {
+	withTempConfig(t)
+	token, _ := EnsureAuthConfig()
+
+	srv := NewServer(t.TempDir())
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	// Subscribe to the same broker that feeds /api/stream-logs.
+	ch := srv.broker.Subscribe()
+	defer srv.broker.Unsubscribe(ch)
+
+	body, _ := json.Marshal(map[string]string{"token": "definitely-wrong"})
+	resp, err := http.Post(ts.URL+"/api/login", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	deadline := time.After(300 * time.Millisecond)
+	for {
+		select {
+		case msg := <-ch:
+			if strings.Contains(msg, token) {
+				t.Fatalf("access token leaked to the SSE broker: %q", msg)
+			}
+		case <-deadline:
+			return
+		}
+	}
+}
+
+func TestLoginAttemptsPruned(t *testing.T) {
+	srv := NewServer(t.TempDir())
+	now := time.Now()
+	srv.loginAttempts["stale"] = []time.Time{now.Add(-2 * loginWindow)}
+	srv.loginAttempts["recent"] = []time.Time{now.Add(-time.Second)}
+
+	srv.pruneLoginAttemptsLocked(now)
+
+	if _, ok := srv.loginAttempts["stale"]; ok {
+		t.Errorf("stale IP entry was not pruned")
+	}
+	if _, ok := srv.loginAttempts["recent"]; !ok {
+		t.Errorf("recent IP entry was pruned")
+	}
 }
