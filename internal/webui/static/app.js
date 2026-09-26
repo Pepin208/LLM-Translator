@@ -802,7 +802,7 @@ document.addEventListener("DOMContentLoaded", () => {
       uploadDropzone.classList.remove("uploading");
       dropzoneIcon.classList.remove("spinner");
       dropzoneIcon.textContent = "📁";
-      dropzoneText.innerHTML = `<strong>Click or drag subtitle file(s) here</strong><span>Supports .srt, .ass, .vtt</span>`;
+      dropzoneText.innerHTML = `<strong>Click or drag subtitle file(s) here</strong><span>Supports .srt, .ass, .ssa, .vtt</span>`;
     }
   }
 
