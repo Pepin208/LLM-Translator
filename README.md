@@ -13,21 +13,8 @@ style.
 - Tag-preserving subtitle reader/writer (no `go-astisub` normalization).
 - Per-series glossaries, retry/quality pipeline, prompt caching, cost
   projections and balance tracking.
-- Single self-contained binary: the frontend is embedded, so a release build
+- Single self-contained binary: the frontend is embedded, so the built server
   runs anywhere with no extra files.
-
-## Download
-
-Grab a prebuilt binary for Linux, macOS or Windows from
-[Releases](https://github.com/Pepin208/LLM-Translator/releases), then run it:
-
-```bash
-./llmt-server          # web server
-./llmt-server --help
-```
-
-The server prints an access token on startup; open the LAN URL it shows and
-paste the token into the login overlay.
 
 ## Build from source
 
@@ -48,6 +35,9 @@ just refresh the browser. A plain build embeds the frontend instead:
 go build -o bin/llmt-server ./cmd/server
 go build -o bin/llmt-cli    ./cmd/cli
 ```
+
+The web server prints an access token on startup; open the LAN URL it shows and
+paste the token into the login overlay.
 
 ## Configuration
 
@@ -74,7 +64,7 @@ masked in `GET /api/config` and never overwritten by a masked submission.
 | `TRANSLATOR_STATIC` | Serve the frontend from this directory instead of the embedded copy |
 | `PORT` | Listen port (default `21346`) |
 | `OPENROUTER_REFERER` | Referer sent to OpenRouter |
-| `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `OPENCODE_API_KEY` | Provider keys (override the config file) |
+| `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_GEMINI_API_KEY`, `OPENCODE_API_KEY` | Provider API keys (override the config file; both OpenCode gateways use `OPENCODE_API_KEY`) |
 
 See `.env.example`.
 
@@ -96,26 +86,22 @@ browser warnings; use `--http` to disable TLS entirely.
 This is a single-user LAN tool, not a hardened multi-tenant service.
 
 - Access is gated by an access token exchanged for a signed session cookie
-  (`HttpOnly`, `SameSite=Strict`). The server prints the token on startup and
-  again on its terminal when a device fails to authenticate.
+  (`HttpOnly`, `SameSite=Strict`). The server prints the token on startup and,
+  on a failed login, reprints it on its own terminal only, never into the
+  shared log or the SSE stream.
 - TLS is self-signed by default (see above). Use `--http` only on a trusted
   network.
 - An authenticated session can upload and download subtitle files and read or
-  update non-secret configuration. It cannot retrieve `translator_config.json`,
-  `cert.pem`, `key.pem` or the server log through the API.
+  update non-secret configuration. The download endpoint only serves files from
+  the upload/output directories and refuses `translator_config.json`,
+  `cert.pem`, `key.pem`, the server log and temp files.
 
 ## Providers
 
-OpenRouter, OpenAI, DeepSeek, Anthropic, Google Gemini, Local, and the OpenCode
-gateways:
-
-- `OpenCode Zen` → `https://opencode.ai/zen/v1`
-- `OpenCode Go`  → `https://opencode.ai/zen/go/v1`
-
-Both use `opencode_api_key` (or `OPENCODE_API_KEY`). Requests are routed per
-model family: `gpt-*`/`grok-*`/`muse-*` → `/responses`, `claude-*`/`qwen*` →
-`/messages`, `gemini-*` → `:generateContent`, everything else
-→ `/chat/completions`.
+Pick any provider in the web UI or the CLI: OpenRouter, OpenAI, Anthropic,
+DeepSeek, Google Gemini, a local OpenAI-compatible server, and the OpenCode
+gateways. Each provider reads its API key from an environment variable (see
+above) or from `translator_config.json`.
 
 ## Layout
 
@@ -140,6 +126,12 @@ go test ./...
 go vet ./...
 go test ./internal/engine -run TestCleanLLMResponse   # single test
 ```
+
+## Contributing
+
+This project was built with AI assistance, so there may be bugs and rough
+edges, small or large. Contributions are welcome: testing with other providers
+and models, corrections and improvements. Open an issue or a pull request.
 
 ## License
 
