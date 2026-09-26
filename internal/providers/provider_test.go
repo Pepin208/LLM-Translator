@@ -1,12 +1,56 @@
 package providers
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/Pepin208/LLM-Translator/internal/config"
 )
+
+func TestMistralRegistered(t *testing.T) {
+	p, err := CreateProvider("Mistral", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := p.(*MistralProvider); !ok {
+		t.Errorf("CreateProvider(\"Mistral\") = %T, want *MistralProvider", p)
+	}
+}
+
+func TestMistralUsesChatCompletions(t *testing.T) {
+	var gotPath, gotAuth string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"1|Hola"},"finish_reason":"stop"}],"usage":{"prompt_tokens":5,"completion_tokens":2}}`))
+	}))
+	defer ts.Close()
+
+	p := &MistralProvider{openAICompatible{BaseURL: ts.URL}}
+	s := config.NewSession()
+	s.APIKey = "mistral-key"
+	s.ModelID = "mistral-large-latest"
+	s.DynamicSystemPrompt = "sp"
+
+	res, err := p.GenerateCompletion(context.Background(), "1|Hi", 600, s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Content != "1|Hola" || res.PromptTokens != 5 || res.CompletionTokens != 2 {
+		t.Errorf("result = %+v", res)
+	}
+	if gotPath != "/chat/completions" {
+		t.Errorf("path = %q, want /chat/completions", gotPath)
+	}
+	if gotAuth != "Bearer mistral-key" {
+		t.Errorf("auth = %q, want Bearer mistral-key", gotAuth)
+	}
+}
 
 func TestOpenCodeProtocolRouting(t *testing.T) {
 	p := NewOpenCodeProvider(true)
