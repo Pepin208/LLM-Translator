@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -184,11 +185,14 @@ func TestDownloadRejectsProtectedAndBaseDirFiles(t *testing.T) {
 
 	base := t.TempDir()
 	// Sensitive artifacts that must never be reachable through the API.
+	// "other_secret.txt" is intentionally NOT on the denylist: it proves the
+	// handler no longer searches baseDir at all, not just that names are blocked.
 	for name, content := range map[string]string{
 		"translator_config.json": `{"openrouter_api_key":"sk-secret-123456"}`,
 		"cert.pem":               "-----BEGIN CERTIFICATE-----",
 		"key.pem":                "-----BEGIN PRIVATE KEY-----",
 		"translator_log.txt":     "log line",
+		"other_secret.txt":       "not on the denylist",
 	} {
 		if err := os.WriteFile(filepath.Join(base, name), []byte(content), 0o600); err != nil {
 			t.Fatal(err)
@@ -196,6 +200,9 @@ func TestDownloadRejectsProtectedAndBaseDirFiles(t *testing.T) {
 	}
 
 	srv := NewServer(base)
+	// httptest serves plain HTTP; ensure the session cookie is usable so the
+	// requests actually reach handleDownload instead of being rejected by auth.
+	srv.SetTLS(false)
 	ts := httptest.NewServer(srv.Router())
 	defer ts.Close()
 	client := loginAs(t, ts, token)
@@ -207,15 +214,19 @@ func TestDownloadRejectsProtectedAndBaseDirFiles(t *testing.T) {
 		"key.pem",
 		"translator_log.txt",
 		"translator_config.json.tmp-123456",
+		"other_secret.txt",
 	} {
 		resp, err := client.Get(ts.URL + "/api/download/" + url.PathEscape(name))
 		if err != nil {
 			t.Fatal(err)
 		}
-		status := resp.StatusCode
+		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		if status == http.StatusOK {
-			t.Errorf("protected file %q was served (200)", name)
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("file %q: status = %d, want 404", name, resp.StatusCode)
+		}
+		if strings.Contains(string(body), "sk-secret-123456") || strings.Contains(string(body), "PRIVATE KEY") {
+			t.Errorf("file %q leaked sensitive content", name)
 		}
 	}
 }
