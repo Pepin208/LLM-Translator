@@ -2,7 +2,9 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -47,10 +49,14 @@ func (s *Server) handleLogin(w http.ResponseWriter, req *http.Request) {
 		fresh = append(fresh, now)
 		s.loginAttempts[ip] = fresh
 		s.loginMu.Unlock()
-		// Surface the current token in the terminal so the user can type it on
-		// the device that is trying to log in.
-		s.logger.Warn("login failed: invalid access token",
-			"ip", ip, "ua", ua, "access_token", CurrentAccessToken())
+		// Audit log for the failed attempt. Deliberately no secret material:
+		// this logger writes to stdout and translator_log.txt.
+		s.logger.Warn("login failed: invalid access token", "ip", ip, "ua", ua)
+		// Preserve the lockout UX by showing the current token on the server's
+		// own terminal only. It must NOT go through s.logger or the SSE broker.
+		if token := CurrentAccessToken(); token != "" {
+			fmt.Fprintf(os.Stderr, "\n[login] device %s failed to authenticate; current access token: %s\n", ip, token)
+		}
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"detail": "Invalid access token."})
 		return
 	}

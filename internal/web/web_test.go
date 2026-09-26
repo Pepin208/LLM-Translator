@@ -9,7 +9,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/Pepin208/LLM-Translator/internal/config"
 )
@@ -252,4 +254,36 @@ func TestDownloadStillServesOutputs(t *testing.T) {
 		t.Errorf("suffix download status = %d, want 200", resp.StatusCode)
 	}
 	resp.Body.Close()
+}
+
+func TestFailedLoginDoesNotBroadcastToken(t *testing.T) {
+	withTempConfig(t)
+	token, _ := EnsureAuthConfig()
+
+	srv := NewServer(t.TempDir())
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	// Subscribe to the same broker that feeds /api/stream-logs.
+	ch := srv.broker.Subscribe()
+	defer srv.broker.Unsubscribe(ch)
+
+	body, _ := json.Marshal(map[string]string{"token": "definitely-wrong"})
+	resp, err := http.Post(ts.URL+"/api/login", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	deadline := time.After(300 * time.Millisecond)
+	for {
+		select {
+		case msg := <-ch:
+			if strings.Contains(msg, token) {
+				t.Fatalf("access token leaked to the SSE broker: %q", msg)
+			}
+		case <-deadline:
+			return
+		}
+	}
 }
