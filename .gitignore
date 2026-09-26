@@ -22,6 +22,9 @@ coverage.out
 /.build-hash
 /.build-hash-static
 
+# Local agent instructions (kept out of the public repo)
+/AGENTS.md
+
 # Frozen Python original: kept for reference only, not part of the active project
 /legacy/
 
