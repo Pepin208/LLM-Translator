@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	github.com/charmbracelet/huh v1.0.0
 	github.com/go-chi/chi/v5 v5.3.2
-	github.com/shopspring/decimal v1.4.0
+	github.com/shopspring/decimal v1.6.0
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/text v0.42.0
 )
